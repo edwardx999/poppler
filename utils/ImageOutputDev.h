@@ -34,12 +34,23 @@
 #include <cstdio>
 #include "goo/ImgWriter.h"
 #include "OutputDev.h"
+#include <memory>
 
 class GfxState;
 
 //------------------------------------------------------------------------
 // ImageOutputDev
 //------------------------------------------------------------------------
+
+class GFreer
+{
+public:
+    template<typename T>
+    void operator()(T *to_free) const
+    {
+        gfree(to_free);
+    }
+};
 
 class ImageOutputDev : public OutputDev
 {
@@ -129,12 +140,13 @@ public:
 
 private:
     class CStr;
+    using WriterHandle = std::unique_ptr<ImgWriter, GFreer>;
     // Gets the output filename with a given file extension
     CStr getFilename(const char *fileExt);
     void listImage(GfxState *state, Object *ref, Stream *str, int width, int height, GfxImageColorMap *colorMap, bool interpolate, bool inlineImg, ImageType imageType);
     void writeImage(GfxState *state, Object *ref, Stream *str, int width, int height, GfxImageColorMap *colorMap, bool inlineImg);
     void writeRawImage(Stream *str, const char *ext);
-    void writeImageFile(ImgWriter *writer, ImageFormat format, const char *ext, Stream *str, int width, int height, GfxImageColorMap *colorMap);
+    void writeImageFile(WriterHandle writer, ImageFormat format, const char *ext, Stream *str, int width, int height, GfxImageColorMap *colorMap);
     long getInlineImageLength(Stream *str, int width, int height, GfxImageColorMap *colorMap);
 
     char *fileRoot; // root of output file names

@@ -52,16 +52,6 @@
 
 static exlib::thread_pool pool;
 
-class GFreer
-{
-public:
-    template<typename T>
-    void operator()(T *to_free) const
-    {
-        gfree(to_free);
-    }
-};
-
 class ImageOutputDev::CStr : public std::unique_ptr<char[], GFreer>
 {
 public:
@@ -367,7 +357,7 @@ void ImageOutputDev::writeRawImage(Stream *str, const char *ext)
     fclose(f);
 }
 
-void ImageOutputDev::writeImageFile(ImgWriter *writer, ImageFormat format, const char *ext, Stream *str, int width, int height, GfxImageColorMap *colorMap)
+void ImageOutputDev::writeImageFile(WriterHandle writer, ImageFormat format, const char *ext, Stream *str, int width, int height, GfxImageColorMap *colorMap)
 {
     FILE *f = nullptr; /* squelch bogus compiler warning */
     ImageStream *imgStr = nullptr;
@@ -443,7 +433,7 @@ void ImageOutputDev::writeImageFile(ImgWriter *writer, ImageFormat format, const
     }
     str->close();
 
-    pool.push_back([=, bytes = std::move(bytes), colorMap = std::unique_ptr<GfxImageColorMap, GFreer>(colorMap->copy())]() noexcept {
+    pool.push_back([=, writer = std::move(writer), bytes = std::move(bytes), colorMap = std::unique_ptr<GfxImageColorMap, GFreer>(colorMap->copy())]() noexcept {
         int const pixelSize = (format == imgRGB48 ? 2 : 1) * sizeof(unsigned int);
         GfxRGB rgb;
         GfxCMYK cmyk;
@@ -541,7 +531,6 @@ void ImageOutputDev::writeImageFile(ImgWriter *writer, ImageFormat format, const
         if (writer) {
             writer->close();
             fclose(f);
-            delete writer;
         }
     });
 }
@@ -647,7 +636,7 @@ void ImageOutputDev::writeImage(GfxState *state, Object *ref, Stream *str, int w
             format = imgRGB;
         }
 
-        writeImageFile(writer, format, "png", str, width, height, colorMap);
+        writeImageFile(WriterHandle(writer), format, "png", str, width, height, colorMap);
 #endif
     } else if (outputTiff) {
         // output in TIFF format
@@ -673,9 +662,7 @@ void ImageOutputDev::writeImage(GfxState *state, Object *ref, Stream *str, int w
             format = imgRGB;
         }
 
-        writeImageFile(writer, format, "tif", str, width, height, colorMap);
-
-        delete writer;
+        writeImageFile(WriterHandle(writer), format, "tif", str, width, height, colorMap);
 #endif
     } else {
         // output in PPM/PBM format
@@ -689,9 +676,7 @@ void ImageOutputDev::writeImage(GfxState *state, Object *ref, Stream *str, int w
             format = imgRGB;
         }
 
-        writeImageFile(writer, format, format == imgRGB ? "ppm" : "pbm", str, width, height, colorMap);
-
-        delete writer;
+        writeImageFile(WriterHandle(writer), format, format == imgRGB ? "ppm" : "pbm", str, width, height, colorMap);
     }
 
     if (inlineImg)
