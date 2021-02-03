@@ -128,8 +128,9 @@ public:
                              bool maskInterpolate) override;
 
 private:
-    // Sets the output filename with a given file extension
-    void setFilename(const char *fileExt);
+    class CStr;
+    // Gets the output filename with a given file extension
+    CStr getFilename(const char *fileExt);
     void listImage(GfxState *state, Object *ref, Stream *str, int width, int height, GfxImageColorMap *colorMap, bool interpolate, bool inlineImg, ImageType imageType);
     void writeImage(GfxState *state, Object *ref, Stream *str, int width, int height, GfxImageColorMap *colorMap, bool inlineImg);
     void writeRawImage(Stream *str, const char *ext);
@@ -137,7 +138,6 @@ private:
     long getInlineImageLength(Stream *str, int width, int height, GfxImageColorMap *colorMap);
 
     char *fileRoot; // root of output file names
-    char *fileName; // buffer for output file names
     bool listImages; // list images instead of dumping
     bool dumpJPEG; // set to dump native JPEG files
     bool dumpJP2; // set to dump native JPEG2000 files
