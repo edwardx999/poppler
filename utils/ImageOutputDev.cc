@@ -385,7 +385,7 @@ void ImageOutputDev::writeImageFile(WriterHandle writer, ImageFormat format, con
         str->reset();
     }
 
-    auto const row_length = width * colorMap->getNumPixelComps();
+    auto const row_length = (format == imgMonochrome) ? (width + 7) / 8 : width * colorMap->getNumPixelComps();
     auto bytes = [&]() {
         if (format == imgMonochrome) {
             unsigned char zero[gfxColorMaxComps];
@@ -402,8 +402,7 @@ void ImageOutputDev::writeImageFile(WriterHandle writer, ImageFormat format, con
                     invert_bits = 0x00;
                 }
             }
-            int size = (width + 7) / 8;
-            std::vector<unsigned char> ret(size * height);
+            std::vector<unsigned char> ret(row_length * height);
             for (auto &byte : ret) {
                 byte = str->getChar();
             }
@@ -433,7 +432,7 @@ void ImageOutputDev::writeImageFile(WriterHandle writer, ImageFormat format, con
     }
     str->close();
 
-    pool.push_back([=, writer = std::move(writer), bytes = std::move(bytes), colorMap = std::unique_ptr<GfxImageColorMap, GFreer>(colorMap->copy())]() noexcept {
+    pool.push_back([=, writer = std::move(writer), bytes = std::move(bytes), colorMap = std::unique_ptr<GfxImageColorMap, GFreer>(colorMap ? colorMap->copy() : nullptr)]() noexcept {
         int const pixelSize = (format == imgRGB48 ? 2 : 1) * sizeof(unsigned int);
         GfxRGB rgb;
         GfxCMYK cmyk;
